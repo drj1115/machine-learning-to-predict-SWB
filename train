@@ -1,0 +1,266 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Dec  1 00:50:36 2022
+train test split
+train --> validation
+test --> auc
+
+不使用svm分类器
+
+@author: DRJ
+"""
+
+import numpy as np
+from xgboost import plot_tree, plot_importance
+from pandas import read_csv
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score, cross_val_predict, train_test_split
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, auc, roc_curve
+from matplotlib import rcParams
+
+
+
+data = read_csv('data.csv',encoding='utf-8')
+y = data['labels']
+x = data.drop(axis = 1, labels = 'labels')
+
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.2,random_state=42)
+
+cv = 10
+
+def plot_roc():
+    
+    # 配置
+    config = {
+    "font.family":'serif',
+    "mathtext.fontset":'stix',
+    "font.serif": ['SimSun'],
+    }
+    rcParams.update(config)
+    
+    fig,ax = plt.subplots(figsize=(10,8))
+    
+    score_lr = lin_clf.predict_proba(x_test)[:,1]
+    fpr_lr,tpr_lr,thres_lr = roc_curve(y_test,score_lr,)
+    print("LogisticRegression:",auc(fpr_lr,tpr_lr))
+    '''
+    score_svm = svm_clf.predict_proba(x_test)[:,1]
+    fpr_svm,tpr_svm,thres_svm = roc_curve(y_test,score_svm,)
+    print("LinearSVC:",auc(fpr_svm,tpr_svm))
+    '''
+    score_dt = tree_clf.predict_proba(x_test)[:,1]
+    fpr_dt,tpr_dt,thres_dt = roc_curve(y_test,score_dt,)
+    print("DecisionTree的AUC为:",auc(fpr_dt,tpr_dt))
+    
+    score_knn = knn_clf.predict_proba(x_test)[:,1]
+    fpr_knn,tpr_knn,thres_knn = roc_curve(y_test,score_knn,)
+    print("kNN的AUC为:",auc(fpr_knn,tpr_knn))
+    
+    score_nb = NB_clf.predict_proba(x_test)[:,1]
+    fpr_nb,tpr_nb,thres_nb = roc_curve(y_test,score_nb,)
+    print("GaussianNB的AUC为:",auc(fpr_nb,tpr_nb))    
+    
+    score_dnn = dnn.predict_proba(x_test)[:,1]
+    fpr_dnn,tpr_dnn,thres_dnn = roc_curve(y_test,score_dnn,)
+    print("neural_network的AUC为:",auc(fpr_dnn,tpr_dnn))   
+    
+    score_rf = forest.predict_proba(x_test)[:,1]
+    fpr_rf,tpr_rf,thres_rf = roc_curve(y_test,score_rf,)
+    print("RandomForest的AUC为:",auc(fpr_rf,tpr_rf)) 
+    
+    score_xgb = xgb_clf.predict_proba(x_test)[:,1]
+    fpr_xgb,tpr_xgb,thres_xgb = roc_curve(y_test,score_xgb,)
+    print("XGBoost的AUC为:",auc(fpr_xgb,tpr_xgb)) 
+    
+    score_ada = ada.predict_proba(x_test)[:,1]
+    fpr_ada,tpr_ada,thres_ada = roc_curve(y_test,score_ada,)
+    print("AdaBoost的AUC为:",auc(fpr_ada,tpr_ada)) 
+    '''
+    ax.plot(fpr_svm,tpr_svm,linewidth=2,
+            label='LinearSVC (AUC={})'.format(str(round(auc(fpr_svm,tpr_svm),3))))
+    '''
+    ax.plot(fpr_lr,tpr_lr,linewidth=2,
+            label='逻辑回归 (AUC={})'.format(str(round(auc(fpr_lr,tpr_lr),3))))
+    ax.plot(fpr_dt,tpr_dt,linewidth=2,
+            label='决策树 (AUC={})'.format(str(round(auc(fpr_dt,tpr_dt),3))))    
+    ax.plot(fpr_knn,tpr_knn,linewidth=2,
+            label='K近邻 (AUC={})'.format(str(round(auc(fpr_knn,tpr_knn),3))))
+    ax.plot(fpr_nb,tpr_nb,linewidth=2,
+            label='朴素贝叶斯 (AUC={})'.format(str(round(auc(fpr_nb,tpr_nb),3))))
+    ax.plot(fpr_dnn,tpr_dnn,linewidth=2,
+            label='人工神经网络 (AUC={})'.format(str(round(auc(fpr_dnn,tpr_dnn),3))))
+    ax.plot(fpr_rf,tpr_rf,linewidth=2,
+            label='随机森林 (AUC={})'.format(str(round(auc(fpr_rf,tpr_rf),3))))
+    ax.plot(fpr_xgb,tpr_xgb,linewidth=2,
+            label='XGBoost (AUC={})'.format(str(round(auc(fpr_xgb,tpr_xgb),3))))
+    ax.plot(fpr_ada,tpr_ada,linewidth=2,
+            label='AdaBoost (AUC={})'.format(str(round(auc(fpr_ada,tpr_ada),3))))
+
+        
+    ax.plot([0,1],[0,1],linestyle='--',color='grey')
+    plt.legend(fontsize=16)
+    plt.xlabel('假阳性率',fontsize=18)
+    plt.ylabel('真阳性率',fontsize=18)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.show()
+    plt.savefig('ROC',dpi=300)
+
+def xgb_visual():
+    # 可视化树
+    plot_tree(xgb_clf)
+    # 可视化特征重要性
+    fig, ax = plt.subplots(figsize=(10,8))
+    plot_importance(xgb_clf,max_num_features=10,title=None,xlabel='特征重要性得分',
+                    ylabel='特征',grid=False,show_values=False,)
+    
+def print_xgb_importance(k):
+    # 该函数打印前k个对xgb模型最重要的特征
+    importance = xgb_clf.get_booster().get_score()
+    tuples = [(k, importance[k]) for k in importance]
+    tuples = sorted(tuples, key=lambda x: x[1],reverse=True)
+    
+    for i in range(k):
+        print(tuples[i])
+
+
+print('LogisticRegression-----------------------------------------------------')
+from sklearn.linear_model import LogisticRegression 
+lin_clf = LogisticRegression(random_state=42, max_iter=1000)
+lin_clf.fit(x_train, y_train)
+
+accuracy = cross_val_score(lin_clf, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(lin_clf, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(lin_clf, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(lin_clf, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
+
+print('LinearSVC--------------------------------------------------------------')
+from sklearn.svm import LinearSVC 
+svm_clf = LinearSVC(random_state=42, dual=False, max_iter=100)
+svm_clf.fit(x_train, y_train)
+
+accuracy = cross_val_score(svm_clf, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(svm_clf, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(svm_clf, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(svm_clf, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
+
+print('DecisionTreeClassifier-------------------------------------------------')
+from sklearn.tree import DecisionTreeClassifier
+tree_clf = DecisionTreeClassifier(max_depth=2, max_features=6, random_state=42,)
+tree_clf.fit(x_train, y_train)
+
+accuracy = cross_val_score(tree_clf, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(tree_clf, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(tree_clf, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(tree_clf, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
+
+
+print('KNN--------------------------------------------------------------------')
+from sklearn.neighbors import KNeighborsClassifier
+knn_clf = KNeighborsClassifier(n_neighbors=30)
+knn_clf.fit(x_train, y_train)
+
+accuracy = cross_val_score(knn_clf, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(knn_clf, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(knn_clf, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(knn_clf, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
+
+print('GaussianNB-------------------------------------------------------------')
+from sklearn.naive_bayes import GaussianNB
+NB_clf = GaussianNB()
+NB_clf.fit(x_train, y_train)
+
+accuracy = cross_val_score(NB_clf, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(NB_clf, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(NB_clf, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(NB_clf, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
+
+print('neural_network---------------------------------------------------------')
+from sklearn.neural_network import MLPClassifier
+dnn = MLPClassifier(hidden_layer_sizes=(50,), learning_rate_init=0.03, max_iter=2000, random_state=42)
+dnn.fit(x_train, y_train)
+
+accuracy = cross_val_score(dnn, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(dnn, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(dnn, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(dnn, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
+
+print('RandomForest-----------------------------------------------------------')
+from sklearn.ensemble import RandomForestClassifier
+forest = RandomForestClassifier(max_depth=8,max_features=10,n_estimators=20,random_state=42)
+forest.fit(x_train, y_train)
+
+accuracy = cross_val_score(forest, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(forest, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(forest, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(forest, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
+
+print('XGBoost----------------------------------------------------------------')
+from xgboost import XGBClassifier
+xgb_clf = XGBClassifier(learning_rate=0.03,
+                        n_estimators=500,
+                        max_depth=None,
+                        random_state=42)
+xgb_clf.fit(x_train, y_train)
+
+accuracy = cross_val_score(xgb_clf, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(xgb_clf, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(xgb_clf, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(xgb_clf, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
+
+
+print('AdaBoost---------------------------------------------------------------')
+from sklearn.ensemble import AdaBoostClassifier
+ada = AdaBoostClassifier(learning_rate=0.03,n_estimators=200)
+ada.fit(x_train, y_train)
+
+accuracy = cross_val_score(ada, x_train, y_train, cv=cv, scoring="accuracy")
+precision = cross_val_score(ada, x_train, y_train, cv=cv, scoring="precision")
+recall = cross_val_score(ada, x_train, y_train, cv=cv, scoring="recall")
+f1 = cross_val_score(ada, x_train, y_train, cv=cv, scoring="f1")
+
+print('accuracy',accuracy.mean())
+print('precision',precision.mean())
+print('recall',recall.mean())
+print('f1',f1.mean())
